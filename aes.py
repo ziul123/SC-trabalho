@@ -1,7 +1,4 @@
-from typing import List
-import sys
-
-sbox = [
+sbox = bytes([
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
     0xB7, 0xFD, 0x93, 0x26, 0x36, 0x3F, 0xF7, 0xCC, 0x34, 0xA5, 0xE5, 0xF1, 0x71, 0xD8, 0x31, 0x15,
@@ -17,10 +14,10 @@ sbox = [
     0xBA, 0x78, 0x25, 0x2E, 0x1C, 0xA6, 0xB4, 0xC6, 0xE8, 0xDD, 0x74, 0x1F, 0x4B, 0xBD, 0x8B, 0x8A,
     0x70, 0x3E, 0xB5, 0x66, 0x48, 0x03, 0xF6, 0x0E, 0x61, 0x35, 0x57, 0xB9, 0x86, 0xC1, 0x1D, 0x9E,
     0xE1, 0xF8, 0x98, 0x11, 0x69, 0xD9, 0x8E, 0x94, 0x9B, 0x1E, 0x87, 0xE9, 0xCE, 0x55, 0x28, 0xDF,
-    0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16,
-]
+    0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16
+])
 
-inv_sbox = [
+inv_sbox = bytes([
     0x52, 0x09, 0x6A, 0xD5, 0x30, 0x36, 0xA5, 0x38, 0xBF, 0x40, 0xA3, 0x9E, 0x81, 0xF3, 0xD7, 0xFB,
     0x7C, 0xE3, 0x39, 0x82, 0x9B, 0x2F, 0xFF, 0x87, 0x34, 0x8E, 0x43, 0x44, 0xC4, 0xDE, 0xE9, 0xCB,
     0x54, 0x7B, 0x94, 0x32, 0xA6, 0xC2, 0x23, 0x3D, 0xEE, 0x4C, 0x95, 0x0B, 0x42, 0xFA, 0xC3, 0x4E,
@@ -37,139 +34,207 @@ inv_sbox = [
     0x60, 0x51, 0x7F, 0xA9, 0x19, 0xB5, 0x4A, 0x0D, 0x2D, 0xE5, 0x7A, 0x9F, 0x93, 0xC9, 0x9C, 0xEF,
     0xA0, 0xE0, 0x3B, 0x4D, 0xAE, 0x2A, 0xF5, 0xB0, 0xC8, 0xEB, 0xBB, 0x3C, 0x83, 0x53, 0x99, 0x61,
     0x17, 0x2B, 0x04, 0x7E, 0xBA, 0x77, 0xD6, 0x26, 0xE1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0C, 0x7D,
-]
+])
 
-rcon = [
-    0x8D, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36, 0x6C, 0xD8, 0xAB, 0x4D
-]
+rcon = bytes([
+    0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40,
+    0x80, 0x1B, 0x36, 0x6C, 0xD8, 0xAB, 0x4D, 0x9A,
+    0x2F, 0x5E, 0xBC, 0x63, 0xC6, 0x97, 0x35, 0x6A,
+    0xD4, 0xB3, 0x7D, 0xFA, 0xEF, 0xC5, 0x91, 0x39,
+])
 
-def flatten_list(l: List[int]) -> List[int]:
-    return [i for j in l for i in j]
 
-def gf_mul(a: int, b: int) -> int:
-    p = 0
-    for i in range(8):
-        if b & 1:
-            p ^= a
-        hi_bit_set = a & 0x80
-        a <<= 1
-        if hi_bit_set:
-            a ^= 0x1B
-        b >>= 1
-    return p & 0xFF
+def bytes2rows(bytestring):
+    return [bytestring[i::4] for i in range(4)]
 
-def cipher(msg: List[int], key: List[int], rounds: int) -> List[int]:
-    result = []
-    blocks = [[x for x in msg[i:i+16]] for i in range(0, len(msg), 16)]
-    while len(blocks[-1]) < 16:
-        blocks[-1].append(0)
-    ciphertext = map(lambda x: aes(x, key, rounds), blocks)
-    return flatten_list(ciphertext)
+def rows2bytes(rows):
+    out = b''
+    for i in range(4):
+        for j in range(4):
+            out += int.to_bytes(rows[j][i], 1, 'big')
+    return out
 
-def decipher(ciphertext: List[int], key: List[int], rounds: int) -> List[int]:
-    result = []
-    blocks = [[x for x in ciphertext[i:i+16]] for i in range(0, len(ciphertext), 16)]
-    text = map(lambda x: inv_aes(x, key, rounds), blocks)
-    return flatten_list(text)
+def mulby2(i):
+    return (((i << 1) ^ 0x1B) & 0xFF) if (i & 0x80) else (i << 1)
 
-def aes(block: List[int], key: List[int], rounds: int) -> List[int]:
-    key = expand_key(key, rounds)
-    state = add_round_key(block, key[:16])
 
-    for i in range(1, rounds + 1):
-        state = sub_bytes(state)
-        state = shift_rows(state)
-        if i != rounds:
-            state = mix_columns(state)
-        state = add_round_key(state, key[i*16:(i+1)*16])
+# multiplicação de uma coluna pela matrix pre-definida
+def matrix_mul_mixcol(column):
+   
+    aux_mulby2 = [0, 0, 0, 0]
+    aux_mulby3 = [0, 0, 0, 0]
+    new_column = [0, 0, 0, 0]
 
-    return state
+    for i in range(4):
+        aux_mulby2[i] = mulby2(column[i])
+        aux_mulby3[i] = aux_mulby2[i]^column[i]
 
-def inv_aes(block: List[int], key: List[int], rounds: int) -> List[int]:
-    key = expand_key(key, rounds)
-    state = add_round_key(block, key[rounds*16:(rounds+1)*16])
+    new_column[0] = aux_mulby2[0] ^ aux_mulby3[1] ^ column[2] ^ column[3]
+    new_column[1] = column[0] ^ aux_mulby2[1] ^ aux_mulby3[2] ^ column[3] 
+    new_column[2] = column[0] ^ column[1] ^ aux_mulby2[2] ^ aux_mulby3[3]
+    new_column[3] = aux_mulby3[0] ^ column[1] ^ column[2] ^ aux_mulby2[3]
+
+    return bytes(new_column)
+
+# sub bytes
+def sub_bytes(state):
+    return state.translate(sbox)
+
+# inverso de sub bytes
+def inv_sub_bytes(state):
+    return state.translate(inv_sbox)
+
+# shift rows
+def shift_rows(state):
+    rows =  bytes2rows(state)
+    shift = []
+    for i in range(4):
+        aux = rows[i]
+        shift.append(aux[i:]+aux[:i])
+    shift = rows2bytes(shift)
+    return shift
+
+# inverso de shift rows
+def inv_shift_rows(state):
+    rows = bytes2rows(state)
+    shift = []
+    for i in range(4):
+        aux = rows[i]
+        shift.append(aux[-i:]+aux[:-i])
+
+    shift = rows2bytes(shift)
+    return shift
+
+# mix columns completo
+def mix_columns(state):
     
-    for i in range(rounds-1, 0, -1):
-        state = inv_shift_rows(state)
-        state = inv_sub_bytes(state)
-        state = add_round_key(state, key[i*16:(i+1)*16])
-        state = inv_mix_columns(state)
+    columns = [state[i:i+4] for i in range(0,16,4)]
+    new_state = b''
+    for column in columns:
+        column = matrix_mul_mixcol(column)
+        new_state += column
 
-    state = inv_shift_rows(state)
-    state = inv_sub_bytes(state)
-    state = add_round_key(state, key[:16])
+    return new_state
 
-    return state
+# inverso de mix columns
+def inv_mix_columns(state):
+    
+    columns = [state[i:i+4] for i in range(0, 16, 4)]
+    new_columns = b''
 
-def expand_key(key: List[int], rounds: int) -> List[int]:
-    round_keys = key[:]
-    for i in range(4, 4 * (rounds + 1)):
-        temp = round_keys[-4:]
+    for column in columns:
+        aux = [0, 0, 0, 0]
+        a = mulby2(mulby2(column[0] ^ column[2]))
+        b = mulby2(mulby2(column[1] ^ column[3]))
+        aux[0] = column[0] ^ a
+        aux[1] = column[1] ^ b
+        aux[2] = column[2] ^ a
+        aux[3] = column[3] ^ b
+        new_columns += bytes(aux)
+    
+    new_columns = mix_columns(new_columns)
+    return new_columns
+
+# adiciona chave de rodada
+def add_round_key(stage, roundkey):
+    stage = int.from_bytes(stage, 'big')
+    roundkey = int.from_bytes(roundkey, 'big')
+    return (stage ^ roundkey).to_bytes(16, 'big')
+
+# expansão de chaves
+def key_expansion(key):
+
+    subkeys = [key[i:i+4] for i in range(0, 16, 4)]
+    w = [key[i:i+4] for i in range(0, 16, 4)]
+    
+    for i in range(4, 44):
+        
+        aux = w[(i-1)%4]
         if i % 4 == 0:
-            temp = [sbox[temp[(j + 1) % 4]] for j in range(4)]
-            temp[0] ^= rcon[i // 4]
-        round_keys.extend([round_keys[i - 16 + j] ^ temp[j] for j in range(4)])
-    return round_keys
+            aux = aux[1:] + int.to_bytes(aux[0], 1, 'big')
+            aux = sub_bytes(aux)
+            aux_0 = int.to_bytes(aux[0] ^ rcon[i//4], 1, 'big')
+            aux = aux_0 + aux[1:]
 
-def add_round_key(state: List[int], key: List[int]) -> List[int]:
-    return list(map(lambda x, y: x^y, state, key))
+        w[i%4] = bytes([w[i%4][j] ^ aux[j] for j in range(4)])
+        subkeys.append(w[i%4])
 
-def sub_bytes(state: List[int]) -> List[int]:
-    return [sbox[x] for x in state]
+    subkeys = b''.join(subkeys)
+    subkeys = [subkeys[i:i+16] for i in range(0, len(subkeys), 16)]
+    return subkeys
 
-def inv_sub_bytes(state: List[int]) -> List[int]:
-    return [inv_sbox[x] for x in state]
+# aplica todas as etapas do AES e codifica mensagem 
+def aes_encrypt(paintext, key, num_rounds):
 
-def shift_rows(state: List[int]) -> List[int]:
-    return flatten_list([(state[i:i+4]*2)[i//4:i//4+4] for i in range(0,16,4)])
 
-def inv_shift_rows(state: List[int]) -> List[int]:
-    t = [[y for y in state[i:i+4]] for i in range(0,16,4)]
-    return flatten_list([(t[i]*2)[4-i:8-i] for i in range(4)])
+    stages = key_expansion(key)
 
-def mix_columns(state: List[int]) -> List[int]:
-    result = [[y for y in state[i:i+4]] for i in range(0,16,4)]
-    for i in range(4):
-        s0 = result[0][i]
-        s1 = result[1][i]
-        s2 = result[2][i]
-        s3 = result[3][i]
+    stage = add_round_key(paintext, stages[0])
 
-        result[0][i] = gf_mul(0x02, s0) ^ gf_mul(0x03, s1) ^ s2 ^ s3
-        result[1][i] = s0 ^ gf_mul(0x02, s1) ^ gf_mul(0x03, s2) ^ s3
-        result[2][i] = s0 ^ s1 ^ gf_mul(0x02, s2) ^ gf_mul(0x03, s3)
-        result[3][i] = gf_mul(0x03, s0) ^ s1 ^ s2 ^ gf_mul(0x02, s3)
-    return flatten_list(result)
+    for i in range(num_rounds):
+        stage = sub_bytes(stage)
+        stage = shift_rows(stage)
+        stage = mix_columns(stage)
+        stage = add_round_key(stage, stages[i+1])
 
-def inv_mix_columns(state: List[int]) -> List[int]:
-    result = [[y for y in state[i:i+4]] for i in range(0,16,4)]
-    for i in range(4):
-        s0 = result[0][i]
-        s1 = result[1][i]
-        s2 = result[2][i]
-        s3 = result[3][i]
+ 
+    stage = sub_bytes(stage)
 
-        result[0][i] = gf_mul(0x0e, s0) ^ gf_mul(0x0b, s1) ^ gf_mul(0x0d, s2) ^ gf_mul(0x09, s3)
-        result[1][i] = gf_mul(0x09, s0) ^ gf_mul(0x0e, s1) ^ gf_mul(0x0b, s2) ^ gf_mul(0x0d, s3)
-        result[2][i] = gf_mul(0x0d, s0) ^ gf_mul(0x09, s1) ^ gf_mul(0x0e, s2) ^ gf_mul(0x0b, s3)
-        result[3][i] = gf_mul(0x0b, s0) ^ gf_mul(0x0d, s1) ^ gf_mul(0x09, s2) ^ gf_mul(0x0e, s3)
-    return flatten_list(result)
+    stage = shift_rows(stage)
 
-if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        f = input("Insira arquivo para cifrar:")
-    else:
-        f = sys.argv[1]
+    stage = add_round_key(stage, stages[10])
+    return stage
 
-    with open(f, "rb") as fs:
-        msg = [x for x in fs.read()]
-    key = [0xaa, 0xff, 0x88, 0x24, 0x19, 0xcd, 0xfa, 0x01, 0x33, 0x03, 0xca, 0xcc, 0x12, 0xdc, 0x99, 0xda]
-    c_msg = cipher(msg, key, 10)
-    with open(f+"_c", "wb") as fs:
-        fs.write(bytes(c_msg))
-        print("Arquivo cifrado:", f+"_c")
-    d_msg = decipher(c_msg, key, 10)
-    with open(f+"_dc", "wb") as fs:
-        fs.write(bytes(d_msg))
-        print("Arquivo decifrado:", f+"_dc")
+# decodifica com as etapas reversas
+def aes_decrypt(paintext, key, num_rounds):
+    
+    stages = key_expansion(key)
+    stage = add_round_key(paintext, stages[-1])
+    stage = inv_shift_rows(stage)
+    stage = inv_sub_bytes(stage)
+    for i in range(num_rounds):
+        stage = add_round_key(stage, stages[-i-2])
+        stage = inv_mix_columns(stage)
+        stage = inv_shift_rows(stage)
+        stage = inv_sub_bytes(stage)
+    stage = add_round_key(stage, stages[0])
+    return stage
 
+# aplica ecb para cifrar mensagens maiores que 128 bits
+def aes_ecb_encrypt(paintext, key, num_rounds):
+    
+    paintext = [paintext[i:i+16] for i in range(0, len(paintext), 16)]
+    if len(paintext[-1]) < 16:
+        i = 16 - len(paintext[-1])
+        paintext[-1] = paintext[-1] + bytes([0]*i)
+
+    for i in range(len(paintext)):
+        paintext[i] = aes_encrypt(paintext[i], key, num_rounds)
+
+    paintext = b''.join(paintext)
+
+    return paintext
+
+# aplica ecb para decifrar mensagens maiores que 128 bits
+def aes_ecb_decrypt(paintext, key, num_rounds):
+    
+    paintext = [paintext[i:i+16] for i in range(0, len(paintext), 16)]
+
+    for i in range(len(paintext)):
+        paintext[i] = aes_decrypt(paintext[i], key, num_rounds)
+
+    paintext = b''.join(paintext)
+
+    return paintext
+
+num_rounds = (int(input("Digite o número de rodadas desejadas para a AES: ")))-1
+
+# Teste de criptografia e descriptografia
+key = bytes.fromhex('00112233445566778899aabbccddeeff')
+paintext = b'abcdefghijklmnop'
+
+encrypted = aes_ecb_encrypt(paintext, key, num_rounds)
+decrypted = aes_ecb_decrypt(encrypted, key, num_rounds)
+
+print('Encrypted:', encrypted.hex())
+print('Decrypted:', decrypted.hex())
