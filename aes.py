@@ -227,14 +227,17 @@ def aes_ecb_decrypt(paintext, key, num_rounds):
 
     return paintext
 
-num_rounds = (int(input("Digite o número de rodadas desejadas para a AES: ")))-1
+if __name__ == "__main__":
 
-# Teste de criptografia e descriptografia
-key = bytes.fromhex('00112233445566778899aabbccddeeff')
-paintext = b'abcdefghijklmnop'
+    num_rounds = (int(input("Digite o número de rodadas desejadas para a AES: ")))-1 #é necessário sub 1 pq a primeira rodada é diferente e não faz parte do laço, culpa sua Paulo kkkkkkk
+    
 
-encrypted = aes_ecb_encrypt(paintext, key, num_rounds)
-decrypted = aes_ecb_decrypt(encrypted, key, num_rounds)
+    # Teste de criptografia e descriptografia
+    key = bytes.fromhex('00112233445566778899aabbccddeeff')
+    paintext = b'abcdefghijklmnop'
 
-print('Encrypted:', encrypted.hex())
-print('Decrypted:', decrypted.hex())
+    encrypted = aes_ecb_encrypt(paintext, key, num_rounds)
+    decrypted = aes_ecb_decrypt(encrypted, key, num_rounds)
+
+    print('Encrypted:', encrypted.hex())
+    print('Decrypted:', decrypted.hex())
