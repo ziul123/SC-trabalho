@@ -1,1 +1,7 @@
 Trabalho de Segurança Computacional
+
+Para usar o aes - python aes.py
+Para usar o modo ctr - python ctr.py
+Para usar a assinatura - python signature.py
+Para cifrar a imagem - python cifrar_imagem.py
+Para decifrar a imagem - python decifrar_imagem.py
